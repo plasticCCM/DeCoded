@@ -13,6 +13,7 @@ const understandingCard = document.getElementById("understandingCard");
 const understandingRank = document.getElementById("understandingRank");
 const understandingFill = document.getElementById("understandingFill");
 const understandingCaption = document.getElementById("understandingCaption");
+const topicPath = document.getElementById("topicPath");
 const openProfile = document.getElementById("openProfile");
 const closeProfile = document.getElementById("closeProfile");
 const profileModal = document.getElementById("profileModal");
@@ -21,6 +22,7 @@ const profileOverallScore = document.getElementById("profileOverallScore");
 const profileTopicsCount = document.getElementById("profileTopicsCount");
 const profileTopicList = document.getElementById("profileTopicList");
 const profileCardList = document.getElementById("profileCardList");
+const profileKnowledgeMap = document.getElementById("profileKnowledgeMap");
 
 let hasAnswer = chatCard?.dataset.hasAnswer === "true";
 let isAsking = false;
@@ -239,6 +241,30 @@ function progressLabel(progress) {
     return `${progress.topic || "Тема не выбрана"}: ${progress.rank || "Coal"}, ${progress.score || 0}%`;
 }
 
+function renderTopicPath(steps = []) {
+    if (!topicPath) {
+        return;
+    }
+
+    topicPath.replaceChildren();
+
+    steps.forEach((step, index) => {
+        const item = document.createElement("div");
+        item.className = `topic-path-step${step.done ? " done" : ""}`;
+        item.dataset.stepKey = step.key || "";
+
+        const number = document.createElement("span");
+        number.setAttribute("aria-hidden", "true");
+        number.textContent = String(index + 1);
+
+        const label = document.createElement("strong");
+        label.textContent = step.label || "";
+
+        item.append(number, label);
+        topicPath.appendChild(item);
+    });
+}
+
 function updateProgressCard(progress) {
     if (!progress) {
         return;
@@ -273,6 +299,7 @@ function updateProgressCard(progress) {
         understandingCaption.textContent = progress.label || progressLabel(currentProgress);
     }
 
+    renderTopicPath(progress.learningPath || []);
     syncGameChoices();
 }
 
@@ -318,6 +345,32 @@ function renderProfile(data) {
 
     if (profileTopicsCount) {
         profileTopicsCount.textContent = String(data.overall?.topicsCount || 0);
+    }
+
+    if (profileKnowledgeMap) {
+        profileKnowledgeMap.replaceChildren();
+        const topics = data.topics || [];
+
+        if (!topics.length) {
+            profileKnowledgeMap.appendChild(createProfileEmpty("Карта появится после первого вопроса."));
+        } else {
+            topics.forEach((topic) => {
+                const node = document.createElement("article");
+                const score = Number(topic.score || 0);
+                node.className = `knowledge-node ${rankClassName(topic.rank)}`;
+                node.style.setProperty("--score", String(score));
+
+                const rank = document.createElement("span");
+                rank.textContent = topic.rank || "Coal";
+                const title = document.createElement("strong");
+                title.textContent = topic.title || "Тема";
+                const percent = document.createElement("small");
+                percent.textContent = `${score}%`;
+
+                node.append(rank, title, percent);
+                profileKnowledgeMap.appendChild(node);
+            });
+        }
     }
 
     if (profileTopicList) {

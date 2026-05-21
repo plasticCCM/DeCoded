@@ -176,6 +176,15 @@
                                         <span id="understandingFill" style="width: {{ progress.score }}%"></span>
                                     </div>
                                     <div class="understanding-caption" id="understandingCaption">{{ progress.label }}</div>
+
+                                    <div class="topic-path" id="topicPath" aria-label="Путь темы">
+                                        {% for step in progress.learningPath %}
+                                            <div class="topic-path-step{% if step.done %} done{% endif %}" data-step-key="{{ step.key }}">
+                                                <span aria-hidden="true">{{ loop.index }}</span>
+                                                <strong>{{ step.label }}</strong>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
 
                                 <div class="chat-actions">
@@ -289,6 +298,26 @@
                     <strong id="profileTopicsCount">{{ profile.overall.topicsCount }}</strong>
                 </div>
             </div>
+
+            <section class="profile-section profile-knowledge-section">
+                <div class="profile-section-head">
+                    <h3>Карта знаний</h3>
+                    <span>Темы, ранги и уверенность</span>
+                </div>
+                <div class="knowledge-map" id="profileKnowledgeMap">
+                    {% if profile.topics %}
+                        {% for item in profile.topics %}
+                            <article class="knowledge-node rank-{{ item.rankClass }}" style="--score: {{ item.score }};">
+                                <span>{{ item.rank }}</span>
+                                <strong>{{ item.title }}</strong>
+                                <small>{{ item.score }}%</small>
+                            </article>
+                        {% endfor %}
+                    {% else %}
+                        <div class="profile-empty">Карта появится после первого вопроса.</div>
+                    {% endif %}
+                </div>
+            </section>
 
             <div class="profile-grid">
                 <section class="profile-section">

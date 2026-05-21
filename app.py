@@ -73,13 +73,14 @@ def build_answer_messages(topic, mode):
             "role": "system",
             "content": (
                 f"{mode_instruction(mode)}\n"
+                "Это обязательный контракт стиля, а не подсказка. В каждом абзаце должны ощущаться тон, метафоры и лексика выбранного режима. "
+                "Не пиши нейтральный учебниковый ответ, если выбран образный режим. "
                 "Строго соблюдай выбранный режим. Если режим изменился, игнорируй стиль прошлых ответов. "
                 "Отвечай по теме пользователя и не смешивай стили."
             )
         },
         {"role": "user", "content": f"Тема: {topic}"}
     ]
-
 
 def ensure_messages():
     if 'messages' not in session:
@@ -492,6 +493,48 @@ def rank_class(score):
     return RANK_CLASS_BY_NAME.get(understanding_rank(score), "coal")
 
 
+def topic_learning_path(topic, score=0):
+    topic = (topic or current_topic() or "").strip()
+    if not topic:
+        return []
+
+    normalized = normalize_topic_key(topic)
+    attempts = 0
+    correct_attempts = 0
+    card_count = 0
+
+    with db_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COALESCE(p.attempts, 0) AS attempts,
+                COALESCE(p.correct_attempts, 0) AS correct_attempts,
+                COUNT(c.id) AS card_count
+            FROM topics t
+            LEFT JOIN progress p ON p.topic_id = t.id AND p.user_id = t.user_id
+            LEFT JOIN saved_cards c ON c.topic_id = t.id AND c.user_id = t.user_id
+            WHERE t.user_id = ? AND t.normalized_title = ?
+            GROUP BY t.id, p.attempts, p.correct_attempts
+            """,
+            (LOCAL_USER_ID, normalized),
+        ).fetchone()
+
+    if row:
+        attempts = int(row["attempts"] or 0)
+        correct_attempts = int(row["correct_attempts"] or 0)
+        card_count = int(row["card_count"] or 0)
+
+    completed_games = completed_games_for_topic(topic)
+    weak_spot_found = attempts > 0 and (correct_attempts < attempts or len(completed_games) > 0)
+
+    return [
+        {"key": "understood", "label": "Понял суть", "done": True},
+        {"key": "checked", "label": "Проверил себя", "done": len(completed_games) > 0},
+        {"key": "weak_spot", "label": "Нашёл слабое место", "done": weak_spot_found},
+        {"key": "repeated", "label": "Повторил карточку", "done": card_count > 0 and int(score or 0) >= 60},
+    ]
+
+
 def progress_snapshot(topic=None):
     topic = (topic or current_topic() or "").strip()
     score = 0
@@ -508,9 +551,9 @@ def progress_snapshot(topic=None):
         "rank": understanding_rank(score),
         "rankClass": rank_class(score),
         "completedGames": completed_games_for_topic(topic),
+        "learningPath": topic_learning_path(topic, score),
         "label": f"{topic or 'Тема не выбрана'}: {understanding_rank(score)}, {score}%",
     }
-
 
 def update_understanding_progress(correct, topic=None, game_type=None, complete_game=False):
     topic = (topic or current_topic() or "").strip()
@@ -557,12 +600,11 @@ def update_understanding_progress(correct, topic=None, game_type=None, complete_
 
     session.modified = True
 
-    snapshot = progress_snapshot(topic_row["title"])
-    snapshot["delta"] = delta
-
     if complete_game and game_type in GAME_TYPES:
         mark_game_completed(topic_row["title"], game_type)
-        snapshot["completedGames"] = completed_games_for_topic(topic_row["title"])
+
+    snapshot = progress_snapshot(topic_row["title"])
+    snapshot["delta"] = delta
 
     return snapshot
 
