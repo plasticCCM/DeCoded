@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeCoded</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/lightning_green.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+
+<body>
+    {% set has_answer = messages|selectattr("role", "equalto", "assistant")|list|length > 0 %}
+
+    <header class="site-header">
+        <div class="container">
+            <nav class="site-nav" aria-label="Основная навигация">
+                <a class="logo" href="#">
+                    <img src="{{ url_for('static', filename='img/lightning_green.png') }}" alt="">
+                    <span>DeCoded</span>
+                </a>
+
+                <div class="nav-links">
+                    <a href="#">Главная</a>
+                    <a href="#app">Чат</a>
+                    <a href="#faq">FAQ</a>
+                </div>
+
+                <div class="nav-actions">
+                    <button class="profile-btn" type="button" id="openProfile">Профиль</button>
+                    <a class="try-btn" href="#app">Попробовать</a>
+                </div>
+            </nav>
+
+            <section class="hero" aria-labelledby="hero-title">
+                <div class="hero-text">
+                    <div class="badge" role="status" aria-live="polite">Активно</div>
+                    <h1 id="hero-title">Объясняем сложное на пальцах</h1>
+                    <p>Ввел текст — получил суть. Наш бот разбирает сложные концепции на простые примеры, адаптируя объяснение под ваш запрос.</p>
+                    <a class="btn btn-primary" href="#app">Попробовать</a>
+                </div>
+
+                <div class="hero-art" aria-hidden="true">
+                    <img src="{{ url_for('static', filename='img/brain.png') }}" alt="">
+                </div>
+            </section>
+        </div>
+    </header>
+
+    <main>
+        <section class="section section-app" id="app">
+            <div class="container">
+                <div class="section-heading">
+                    <span class="section-kicker">Задавай вопрос уже сейчас</span>
+                    <h2>Разжуем любую тему</h2>
+                    <p>Меняя подход к обучению, мы помогаем новому поколению понимать сложные технологии через живые аналогии, игровые механики и персональные стили объяснения — делая знание доступным каждому.</p>
+                </div>
+
+                <div class="chat-layout">
+                    <div class="chat-robot" aria-hidden="true">
+                        <img src="{{ url_for('static', filename='img/robot.png') }}" alt="">
+                    </div>
+
+                    <div class="chat-card" data-has-answer="{{ 'true' if has_answer else 'false' }}">
+                        <div class="mode-buttons" id="modeButtons" role="group" aria-label="Стиль объяснения">
+                            <button class="mode" type="button" data-value="👵 Как бабушка">👵 Как бабушка</button>
+                            <button class="mode" type="button" data-value="😂 Как мем">😂 Как мем</button>
+                            <button class="mode" type="button" data-value="🎮 Как RPG">🎮 Как RPG</button>
+                            <button class="mode" type="button" data-value="🍔 Через еду">🍔 Через еду</button>
+                            <button class="mode" type="button" data-value="🧒 Как ребёнку">🧒 Как ребёнку</button>
+                            <button class="mode" type="button" data-value="📚 Как профессор">📚 Как профессор</button>
+                        </div>
+
+                        <div class="chat-header">
+                            <div>
+                                <h3>История чата</h3>
+                                <p>Ответы сохраняются в текущей сессии.</p>
+                            </div>
+                            <button class="icon-btn" type="button" id="resetChat" aria-label="Очистить чат" title="Очистить чат">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+
+                        <div class="recent-topics" id="recentTopics" aria-label="Недавние темы">
+                            <div class="recent-topics-head">
+                                <strong>Недавние темы</strong>
+                                <span>Нажми, чтобы вернуть в поле</span>
+                            </div>
+                            <div class="recent-topic-list" id="recentTopicList">
+                                {% if recent_topics %}
+                                    {% for topic in recent_topics %}
+                                        <button type="button" class="recent-topic" data-topic="{{ topic }}">{{ topic }}</button>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="recent-topic-empty">Появятся после первого вопроса.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="chat-messages" id="chatMessages" aria-live="polite">
+                            {% for msg in messages %}
+                                {% if msg.role == 'user' %}
+                                    <article class="message message-user">
+                                        <div class="message-label">Вы</div>
+                                        {% if msg.get('mode') %}
+                                            <div class="message-mode">Режим: {{ msg.mode }}</div>
+                                        {% endif %}
+                                        <div class="message-body">{{ msg.get('display', msg.content) }}</div>
+                                    </article>
+                                {% elif msg.role == 'assistant' %}
+                                    <article class="message message-assistant">
+                                        <div class="message-label">Бот</div>
+                                        <div class="message-body rich-text">{{ msg.content|render_markdown }}</div>
+                                    </article>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if not has_answer %}
+                                <div class="empty-state" id="emptyState">
+                                    <strong>Готов к разбору.</strong>
+                                    <span>Напиши любую тему ниже.</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <form id="chatForm" class="chat-form">
+                            <select name="mode" id="modeSelect" required aria-label="Стиль объяснения">
+                                <option value="👵 Как бабушка">👵 Как бабушка</option>
+                                <option value="😂 Как мем">😂 Как мем</option>
+                                <option value="🎮 Как RPG">🎮 Как RPG</option>
+                                <option value="🍔 Через еду">🍔 Через еду</option>
+                                <option value="🧒 Как ребёнку">🧒 Как ребёнку</option>
+                                <option value="📚 Как профессор">📚 Как профессор</option>
+                            </select>
+
+                            <div class="input-row">
+                                <input name="topic" autocomplete="off" placeholder="Например: как работает блокчейн" required>
+                                <button class="btn btn-send" type="submit" aria-label="Отправить">➜</button>
+                            </div>
+
+                            <div class="practice-panel" aria-label="Мини-игры для закрепления">
+                                <div class="practice-head">
+                                    <strong>Закрепить за 20 сек</strong>
+                                    <span>Игры строятся по последнему ответу.</span>
+                                </div>
+
+                                <div class="game-buttons">
+                                    <button type="button" class="game-choice active" data-game-type="true_false">
+                                        <span aria-hidden="true">✓</span>
+                                        <strong>Быстрый чек</strong>
+                                    </button>
+                                    <button type="button" class="game-choice" data-game-type="fill_blank">
+                                        <span aria-hidden="true">▣</span>
+                                        <strong>Вставь слова</strong>
+                                    </button>
+                                    <button type="button" class="game-choice" data-game-type="sentence_order">
+                                        <span aria-hidden="true">⇄</span>
+                                        <strong>Собери мысль</strong>
+                                    </button>
+                                    <button type="button" class="game-choice" data-game-type="simple_choice">
+                                        <span aria-hidden="true">★</span>
+                                        <strong>Лучшее объяснение</strong>
+                                    </button>
+                                </div>
+
+                                <div class="understanding-card" id="understandingCard" data-score="{{ progress.score }}" data-rank="{{ progress.rank }}" data-topic="{{ progress.topic }}" data-completed-games="{{ progress.completedGames|join(',') }}">
+                                    <div class="understanding-head">
+                                        <strong>Уровень понимания</strong>
+                                        <span id="understandingRank" class="rank-pill rank-{{ progress.rankClass }}">{{ progress.rank }}</span>
+                                    </div>
+                                    <div class="understanding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress.score }}" aria-label="Уровень понимания">
+                                        <span id="understandingFill" style="width: {{ progress.score }}%"></span>
+                                    </div>
+                                    <div class="understanding-caption" id="understandingCaption">{{ progress.label }}</div>
+                                </div>
+
+                                <div class="chat-actions">
+                                    <button type="button" id="gameBtn" class="btn btn-secondary">
+                                        🎮 Запустить игру
+                                    </button>
+                                    <span id="statusText" class="status-text" aria-live="polite"></span>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div id="gameArea" class="game-area"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="faq">
+            <div class="container">
+                <div class="section-heading">
+                    <span class="section-kicker">FAQ</span>
+                    <h2>Получите ответ на свой вопрос</h2>
+                    <p>Здесь мы собрали список самых задаваемых вопросов, раскрой их и узнай ответ на этот вопрос!</p>
+                </div>
+
+                <div class="faq">
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" aria-expanded="false">
+                            Что это за бот и чем он отличается от ChatGPT или обычного поиска?
+                            <span aria-hidden="true">+</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Мы — не просто поисковик, а ИИ-переводчик с языка терминов на человеческий. Главная фишка: бот объясняет сложные темы через аналогии и стили мышления. Хочешь понять квантовую физику так, будто ты персонаж RPG? Или чтобы тебе объяснили «как бабушке»? Выбирай режим — и сложное станет простым.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" aria-expanded="false">
+                            Как это работает? Куда нажимать?
+                            <span aria-hidden="true">+</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Всё просто:</p>
+                            <ol>
+                                <li>Вводишь тему, которую хочешь понять, например «инфляция» или «фотосинтез».</li>
+                                <li>Выбираешь режим объяснения: «Как в RPG», «Как бабушка», «Как ребенку» и другие.</li>
+                                <li>Получаешь объяснение на понятных примерах.</li>
+                                <li>Для закрепления проходишь квиз, смотришь визуализацию или играешь в мини-игру, чтобы знание улеглось в голове навсегда.</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" aria-expanded="false">
+                            Это для школьников или для студентов? А взрослым можно?
+                            <span aria-hidden="true">+</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Для всех, кто хочет понять, а не зазубрить. Подросткам — чтобы не заскучать на уроке. Студентам — чтобы въехать в сложный материал перед экзаменом. Взрослым — чтобы наконец разобраться в крипте, нейросетях или устройстве Вселенной за чашкой кофе. Возрастных ограничений нет, есть ограничение на «сложный язык» — мы его убираем.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" aria-expanded="false">
+                            Это же можно использовать, чтобы домашку списать?
+                            <span aria-hidden="true">+</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Нет, и это принципиально. Мы создавали проект для реального понимания, а не для списывания. Бот не дает готовых ответов «в лоб» — он объясняет суть, проводит аналогии и помогает самому прийти к решению. А квизы и мини-игры нужны, чтобы ты реально разобрался в теме, а не просто скопировал текст.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" aria-expanded="false">
+                            А если я вообще «ноль» в теме? Мне зайдет?
+                            <span aria-hidden="true">+</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Идеально зайдет. Мы начинали с мысли, что сложные вещи должны быть доступны любому. Если ты ничего не знаешь о теме — бот включит режим «Полный новичок» и объяснит на аналогиях из жизни. Например, ядерный реактор будет работать как... обычная кастрюля с рисом (спойлер: рис не убегает, если знать принцип). Так что залетай, даже если боишься слова «синхрофазотрон».</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="profile-modal" id="profileModal" aria-hidden="true">
+        <div class="profile-backdrop" data-profile-close></div>
+        <section class="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+            <div class="profile-header">
+                <div>
+                    <span class="section-kicker">Локальный кабинет</span>
+                    <h2 id="profileTitle">Профиль</h2>
+                </div>
+                <button class="icon-btn" type="button" id="closeProfile" aria-label="Закрыть профиль" title="Закрыть профиль">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+
+            <div class="profile-summary">
+                <div>
+                    <span>Общий ранг</span>
+                    <strong id="profileOverallRank" class="rank-text rank-{{ profile.overall.rankClass }}">{{ profile.overall.rank }}</strong>
+                </div>
+                <div>
+                    <span>Средний уровень</span>
+                    <strong id="profileOverallScore">{{ profile.overall.score }}%</strong>
+                </div>
+                <div>
+                    <span>Тем изучено</span>
+                    <strong id="profileTopicsCount">{{ profile.overall.topicsCount }}</strong>
+                </div>
+            </div>
+
+            <div class="profile-grid">
+                <section class="profile-section">
+                    <div class="profile-section-head">
+                        <h3>Изученные темы</h3>
+                    </div>
+                    <div class="profile-topic-list" id="profileTopicList">
+                        {% if profile.topics %}
+                            {% for item in profile.topics %}
+                                <article class="profile-topic">
+                                    <div>
+                                        <strong>{{ item.title }}</strong>
+                                        <span class="rank-pill rank-{{ item.rankClass }}">{{ item.rank }}, {{ item.score }}%</span>
+                                    </div>
+                                    <div class="profile-mini-bar" aria-hidden="true">
+                                        <span style="width: {{ item.score }}%"></span>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        {% else %}
+                            <div class="profile-empty">Темы появятся после первого вопроса.</div>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="profile-section">
+                    <div class="profile-section-head">
+                        <h3>Последние карточки</h3>
+                    </div>
+                    <div class="profile-card-list" id="profileCardList">
+                        {% if profile.cards %}
+                            {% for card in profile.cards %}
+                                <article class="profile-card-item">
+                                    <span>{{ card.topic }}</span>
+                                    <strong>{{ card.front }}</strong>
+                                    <p>{{ card.back }}</p>
+                                </article>
+                            {% endfor %}
+                        {% else %}
+                            <div class="profile-empty">Карточки сохранятся из ответов бота.</div>
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+        </section>
+    </div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <a class="logo" href="#">
+                    <img src="{{ url_for('static', filename='img/lightning_green.png') }}" alt="">
+                    <span>DeCoded</span>
+                </a>
+
+                <div>
+                    <div class="footer-title">Ссылки</div>
+                    <div class="footer-links">
+                        <a href="#">Главная</a>
+                        <a href="#app">Попробовать</a>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="footer-title">Помощь</div>
+                    <div class="footer-links">
+                        <a href="#faq">FAQ</a>
+                        <a href="#">Поддержка</a>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="footer-title">Соц. сети</div>
+                    <div class="footer-links">
+                        <a href="#">Telegram</a>
+                        <a href="#">Instagram</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="copyright">© 2026 DeCoded</div>
+        </div>
+    </footer>
+</body>
+
+</html>

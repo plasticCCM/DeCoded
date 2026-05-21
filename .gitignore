@@ -1,0 +1,10 @@
+venv/
+.env
+__pycache__/
+*.pyc
+.DS_Store
+chat_history.json
+.vscode
+decoded.sqlite3
+*.sqlite3
+*.log
